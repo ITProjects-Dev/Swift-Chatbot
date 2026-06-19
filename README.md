@@ -12,15 +12,7 @@ A FastAPI-based chatbot backend with:
 
 ## Project Structure
 
-```text
-.
-├── main.py                # FastAPI application
-├── chatbot_engine.py      # Core chatbot logic
-├── db.py                  # MySQL database connection
-├── models.py              # Pydantic request/response models
-├── requirements.txt       # Python dependencies
-└── README.md
-```
+
 
 ## Features
 
