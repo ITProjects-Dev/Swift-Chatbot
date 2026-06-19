@@ -1,0 +1,100 @@
+{
+	"info": {
+		"_postman_id": "d0825b32-92d4-438a-a3bc-c2553d4aa23c",
+		"name": "Swift-Chatbot API Testing",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "01_Health_Check",
+			"item": [
+				{
+					"name": "HOME_001_Health_Check",
+					"id": "41106bcb-0bff-4a43-a2a5-0430eb21699c",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": [
+						{
+							"id": "c6f27921-da24-4b07-95c5-f99a7525ae23",
+							"name": "HOME_001_Health_Check",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"username\": \"testuser\",\r\n  \"password\": \"Password123\"\r\n}"
+								},
+								"url": "{{baseURL}}/"
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": null,
+							"header": [
+								{
+									"key": "date",
+									"value": "Thu, 18 Jun 2026 06:47:34 GMT"
+								},
+								{
+									"key": "server",
+									"value": "uvicorn"
+								},
+								{
+									"key": "content-length",
+									"value": "53"
+								},
+								{
+									"key": "content-type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"responseTime": null,
+							"body": "{\n    \"message\": \"FastAPI connected to MySQL successfully\"\n}"
+						}
+					]
+				}
+			],
+			"id": "9125f873-5c61-4b2d-afba-53cf903463ae"
+		},
+		{
+			"name": "02_Register_User",
+			"item": [
+				{
+					"name": "New Request",
+					"id": "533190ff-8813-48da-874e-7dee15673f84",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			],
+			"id": "4d9971c3-7149-43d5-8116-be40e42a295b"
+		},
+		{
+			"name": "03_Verify_OTP",
+			"item": [],
+			"id": "597ece00-5c73-4afb-be01-5e2fffd75c35"
+		},
+		{
+			"name": "New Request",
+			"id": "8971814b-89e7-47ca-8134-1dfde8830026",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	]
+}
