@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, requests
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 
@@ -189,3 +189,4 @@ def chatbot_access(email: str, db: Session = Depends(get_db)):
             "role": user.role
         }
     }
+

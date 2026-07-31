@@ -1,255 +1,97 @@
-from unittest import result
-from urllib import request
 from fastapi import APIRouter, HTTPException
-from services.chatbot_service import search_course_question
-from fastapi import APIRouter, HTTPException
-from schemas import ChatRequest
-from schemas import FAQRequest
-from schemas import FeedbackRequest
-from schemas import EndChatRequest
-from utils.validations import validate_message
-from schemas import CallbackRequest
+from schemas import CourseSuggestionRequest
 from services.chatbot_service import (
-    get_faq_questions,
-    get_faq_answer,
-    search_question,
-    get_fallback_response,
-    get_sub_options,
-    get_sub_option_answer,
-    save_feedback,
-    save_message,
-    create_chat_session,
-    session_exists,
-    end_chat_session,
-    save_chat_log,
-    search_course_question,
-    save_unanswered_question,
-    search_settings_question,
-    save_callback_request,
-    save_chatbot_action
-
-    
+    get_categories,
+    get_category_contents,
+    get_content,
+    get_content_actions,
+    suggest_course,
+    get_chatbot_settings,
 
 )
+
 router = APIRouter()
-@router.get("/faq-questions")
-def faq_questions():
 
-    return {
-        "status": 200,
-        "data": get_faq_questions()
-    }
-@router.get("/faq-answer/{faq_id}")
-def faq_answer(faq_id: int):
+@router.get("/categories")
+def categories():
+    try:
+        data = get_categories()
 
-    answer = get_faq_answer(faq_id)
+        return {
+            "success": 200,
+            "data": data
+        }
 
-    if not answer:
-
+    except Exception as e:
         raise HTTPException(
-            status_code=404,
-            detail="Question not found"
+            status_code=500,
+            detail=str(e)
         )
 
-    return {
-        "status": 200,
-        "answer": answer
-    }
-@router.post("/chat")
-def chat(request: ChatRequest):
+@router.get("/category/{category_id}")
+def category_contents(category_id: int):
 
     try:
 
-        validate_message(request.message)
-
-        # Create session if it doesn't exist
-        if not session_exists(
-            request.session_id
-        ):
-            create_chat_session(
-                request.session_id
-            )
-
-        # Save User Message
-        save_message(
-            request.session_id,
-            "user",
-            request.message
-        )
-
-        intent_id = None
-
-        # 1. Check settings first
-        answer = search_settings_question(
-            request.message
-        )
-
-        if answer:
-
-            response_type = "settings_match"
-
-        else:
-
-            # 2. Check keywords
-            result = search_question(
-                request.message
-            )
-
-            if result:
-
-                intent_id = result["intent_id"]
-                answer = result["response"]
-                response_type = "keyword_match"
-
-            else:
-
-                # 3. Check courses
-                answer = search_course_question(
-                    request.message
-                )
-
-                if answer:
-
-                    response_type = "course_match"
-
-                else:
-
-                    # 4. Fallback
-                    answer = get_fallback_response()
-                    response_type = "fallback"
-
-                    save_unanswered_question(
-                        request.session_id,
-                        request.message
-                    )
-
-        log_id= save_chat_log(
-            request.session_id,
-            intent_id,
-            request.message,
-            answer,
-            response_type
-        )
-
-        # Save Bot Message
-        save_message(
-            request.session_id,
-            "bot",
-            answer
-        )
+        data = get_category_contents(category_id)
 
         return {
-            "success": True,
-            "answer": answer,
-            "log_id": log_id
+            "success": 200,
+            "data": data
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+@router.get("/content/{content_id}")
+def content(content_id: int):
+
+    try:
+
+        chatbot_content = get_content(content_id)
+
+        if chatbot_content is None:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Content not found"
+            )
+
+        actions = get_content_actions(content_id)
+
+        return {
+            "success": 200,
+            "content": chatbot_content,
+            "actions": actions
         }
 
     except HTTPException:
         raise
 
     except Exception as e:
+
         raise HTTPException(
             status_code=500,
             detail=str(e)
         )
-    
-@router.get("/sub-options")
-def sub_options():
 
-    data = get_sub_options()
-
-    return {
-        "success": True,
-        "data": data
-    }
-
-
-@router.get("/sub-option-answer/{option_id}")
-def sub_option_answer(option_id: int):
-
-    answer = get_sub_option_answer(option_id)
-
-    if not answer:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Option not found"
-        )
-
-    return {
-        "success": True,
-        "answer": answer
-    }
-
-
-@router.post("/end-chat")
-def end_chat(request: EndChatRequest):
+@router.post("/suggest-course")
+def save_course_suggestion(request: CourseSuggestionRequest):
 
     try:
 
-        end_chat_session(
-            request.session_id
-        )
-
-        save_chatbot_action(
-            None,
-            "end_chat"
+        suggest_course(
+            request.suggested_course,
+            request.session_id,
+            request.created_by_ip
         )
 
         return {
-            "success": True,
-            "message": "Chat ended successfully"
-        }
-
-    except Exception:
-
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to end chat"
-        )
-@router.post("/callback-request")
-def callback_request(request: CallbackRequest):
-
-    try:
-
-        save_callback_request(
-            request.user_id,
-            request.course_interest,
-            request.preferred_time,
-            request.notes
-        )
-
-        save_chatbot_action(
-            request.user_id,
-            "callback_request"
-        )
-
-        return {
-            "success": True,
-            "message": "Callback request submitted successfully"
-        }
-
-    except Exception:
-
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to save request"
-        )
-    
-
-@router.post("/feedback")
-def feedback(request: FeedbackRequest):
-
-    try:
-
-        save_feedback(
-            request.log_id,
-            request.rating
-        )
-
-        return {
-            "success": True,
-            "message": "Feedback saved successfully"
+            "success": 200,
+            "message": "Course suggestion submitted successfully."
         }
 
     except Exception as e:
@@ -258,4 +100,23 @@ def feedback(request: FeedbackRequest):
             status_code=500,
             detail=str(e)
         )
-    
+
+
+@router.get("/settings")
+def chatbot_settings():
+
+    try:
+
+        data = get_chatbot_settings()
+
+        return {
+            "success": 200,
+            "data": data
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

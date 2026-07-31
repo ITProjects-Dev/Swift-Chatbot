@@ -67,3 +67,15 @@ class UserCreate(BaseModel):
 class OTPVerify(BaseModel):
     email: EmailStr
     otp: str
+
+
+
+class CourseSuggestionRequest(BaseModel):
+    suggested_course: str = Field(
+        ...,
+        min_length=80,
+        max_length=150
+    )
+
+    session_id: Optional[str] = None
+    created_by_ip: Optional[str] = None

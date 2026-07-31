@@ -1,547 +1,177 @@
 from sqlalchemy import text
 from database import engine
-from uuid import uuid4
-from sqlalchemy import text
-def get_faq_questions():
 
-    query = """
-        SELECT faq_id, question
-        FROM chat_faqs
+
+def get_categories():
+    query = text("""
+        SELECT
+            category_id,
+            category_name,
+            category_icon
+        FROM chat_categories
         WHERE status = 1
-        """
+        ORDER BY display_order
+    """)
 
-    with engine.connect() as conn:
+    with engine.connect() as connection:
+        result = connection.execute(query)
 
-        result = conn.execute(text(query))
+        categories = []
 
-        rows = result.fetchall()
+        for row in result:
+            categories.append({
+                "category_id": row.category_id,
+                "category_name": row.category_name,
+                "category_icon": row.category_icon
+            })
 
-    return [
-        {
-            "faq_id": row[0],
-            "question": row[1]
-        }
-        for row in rows
-    ]
+        return categories
 
-def get_faq_answer(faq_id):
 
-    query = """
-    SELECT answer
-    FROM chat_faqs
-    WHERE faq_id = :faq_id
-    """
+def get_category_contents(category_id):
+    query = text("""
+        SELECT
+            content_id,
+            title,
+            content_type
+        FROM chat_contents
+        WHERE category_id = :category_id
+        AND parent_content_id IS NULL
+        AND status = 1
+        ORDER BY display_order
+    """)
 
-    with engine.connect() as conn:
-
-        result = conn.execute(
-            text(query),
+    with engine.connect() as connection:
+        result = connection.execute(
+            query,
             {
-                "faq_id": faq_id
+                "category_id": category_id
             }
         )
 
-        row = result.fetchone()
+        contents = []
 
-    if not row:
-        return None
+        for row in result:
+            contents.append({
+                "content_id": row.content_id,
+                "title": row.title,
+                "content_type": row.content_type
+            })
 
-    return row[0]
-
-
-def search_question(message):
-
-    query = """
-    SELECT
-        ck.intent_id,
-        cr.response_text
-    FROM chat_keywords ck
-    INNER JOIN chat_responses cr
-        ON ck.intent_id = cr.intent_id
-    WHERE LOWER(:message)
-    LIKE CONCAT('%', LOWER(ck.keyword), '%')
-    LIMIT 1
-    """
+        return contents
 
 
-    with engine.connect() as conn:
+def get_content(content_id):
+    query = text("""
+        SELECT
+            content_id,
+            title,
+            content
+        FROM chat_contents
+        WHERE content_id = :content_id
+        AND status = 1
+    """)
 
-        result = conn.execute(
-            text(query),
+    with engine.connect() as connection:
+
+        result = connection.execute(
+            query,
             {
-                "message": message.strip()
+                "content_id": content_id
             }
-        )
+        ).fetchone()
 
-        row = result.fetchone()
-
-    if row:
+        if result is None:
+            return None
 
         return {
-            "intent_id": row[0],
-            "intent_name": row[1],
-            "response": row[1]
+            "content_id": result.content_id,
+            "title": result.title,
+            "content": result.content
         }
 
-    return None
+def get_content_actions(content_id):
+    query = text("""
+        SELECT
+            action_id,
+            action_label,
+            action_type,
+            action_value
+        FROM chat_actions
+        WHERE content_id = :content_id
+        AND status = 1
+        ORDER BY display_order
+    """)
 
-def get_fallback_response():
+    with engine.connect() as connection:
 
-    query = """
-    SELECT response_text
-    FROM chat_fallbacks
-    LIMIT 1
-    """
-
-    with engine.connect() as conn:
-
-        result = conn.execute(text(query))
-
-        row = result.fetchone()
-
-    if row:
-        return row[0]
-
-    return "Sorry, I couldn't understand your question."
-
-
-def get_sub_options():
-
-    query = """
-    SELECT
-        option_id,
-        option_name
-    FROM chat_sub_options
-    """
-
-    with engine.connect() as conn:
-
-        result = conn.execute(text(query))
-        rows = result.fetchall()
-
-    return [
-        {
-            "option_id": row[0],
-            "option_name": row[1]
-        }
-        for row in rows
-    ]
-
-
-def get_sub_option_answer(option_id):
-
-    query = """
-    SELECT option_answer
-    FROM chat_sub_options
-    WHERE option_id = :option_id
-    """
-
-    with engine.connect() as conn:
-
-        result = conn.execute(
-            text(query),
-            {"option_id": option_id}
+        result = connection.execute(
+            query,
+            {
+                "content_id": content_id
+            }
         )
 
-        row = result.fetchone()
+        actions = []
 
-    if row:
-        return row[0]
+        for row in result:
 
-    return None
+            actions.append({
+                "action_id": row.action_id,
+                "action_label": row.action_label,
+                "action_type": row.action_type,
+                "action_value": row.action_value
+            })
 
+        return actions
 
-def save_message(
-    session_id,
-    sender,
-    message
-):
+def suggest_course(suggested_course, session_id=None, created_by_ip=None):
 
-    query = """
-    INSERT INTO chat_messages
-    (
-        session_id,
-        sender,
-        message
-    )
-    VALUES
-    (
-        :session_id,
-        :sender,
-        :message
-    )
-    """
+    query = text("""
+        INSERT INTO course_suggestions
+        (
+            suggested_course,
+            session_id,
+            created_by_ip
+        )
+        VALUES
+        (
+            :suggested_course,
+            :session_id,
+            :created_by_ip
+        )
+    """)
 
-    with engine.connect() as conn:
+    with engine.begin() as connection:
 
-        conn.execute(
-            text(query),
+        connection.execute(
+            query,
             {
+                "suggested_course": suggested_course,
                 "session_id": session_id,
-                "sender": sender,
-                "message": message
+                "created_by_ip": created_by_ip
             }
         )
 
-        conn.commit()
+    return True
 
 
+def get_chatbot_settings():
 
+    query = text("""
+        SELECT
+            setting_key,
+            setting_value
+        FROM chatbot_settings
+    """)
 
-def session_exists(session_id):
+    with engine.connect() as connection:
 
-    query = """
-    SELECT session_id
-    FROM chat_sessions
-    WHERE session_id = :session_id
-    """
+        result = connection.execute(query)
 
-    with engine.connect() as conn:
+        settings = {}
 
-        result = conn.execute(
-            text(query),
-            {
-                "session_id": session_id
-            }
-        )
+        for row in result:
+            settings[row.setting_key] = row.setting_value
 
-        row = result.fetchone()
-
-    return row is not None
-
-def end_chat_session(session_id):
-
-    query = """
-    UPDATE chat_sessions
-    SET
-        status = 'closed',
-        ended_at = NOW()
-    WHERE session_id = :session_id
-    """
-
-    with engine.connect() as conn:
-
-        conn.execute(
-            text(query),
-            {
-                "session_id": session_id
-            }
-        )
-
-        conn.commit()
-
-
-def create_chat_session(session_id):
-
-    query = """
-    INSERT INTO chat_sessions
-    (
-        session_id,
-        status
-    )
-    VALUES
-    (
-        :session_id,
-        'active'
-    )
-    """
-
-    with engine.connect() as conn:
-
-        conn.execute(
-            text(query),
-            {
-                "session_id": session_id
-            }
-        )
-
-        conn.commit()
-
-def save_chat_message(
-    session_id,
-    sender,
-    message
-):
-
-    query = """
-    INSERT INTO chat_messages
-    (
-        session_id,
-        sender,
-        message
-    )
-    VALUES
-    (
-        :session_id,
-        :sender,
-        :message
-    )
-    """
-
-    with engine.connect() as conn:
-
-        conn.execute(
-            text(query),
-            {
-                "session_id": session_id,
-                "sender": sender,
-                "message": message
-            }
-        )
-
-        conn.commit()
-
-def save_chat_log(
-    session_id,
-    intent_id,
-    user_question,
-    bot_response,
-    response_type
-):
-
-    query = """
-    INSERT INTO chat_logs
-    (
-        session_id,
-        intent_id,
-        user_question,
-        bot_response,
-        response_type
-    )
-    VALUES
-    (
-        :session_id,
-        :intent_id,
-        :user_question,
-        :bot_response,
-        :response_type
-    )
-    """
-
-    with engine.connect() as conn:
-
-        result = conn.execute(
-            text(query),
-            {
-                "session_id": session_id,
-                "intent_id": intent_id,
-                "user_question": user_question,
-                "bot_response": bot_response,
-                "response_type": response_type
-            }
-        )
-
-        conn.commit()
-
-        return result.lastrowid
-
-
-def search_course_question(message):
-
-    query = """
-    SELECT
-        c.title,
-        c.description,
-        c.duration,
-        c.price
-    FROM chat_course_keywords ck
-    INNER JOIN courses c
-        ON ck.course_id = c.id
-    WHERE LOWER(:message)
-    LIKE CONCAT('%', LOWER(ck.keyword), '%')
-    LIMIT 1
-    """
-
-    with engine.connect() as conn:
-
-        result = conn.execute(
-            text(query),
-            {
-                "message": message.strip()
-            }
-        )
-
-        row = result.fetchone()
-
-    if row:
-
-        return f"""
-Course: {row[0]}
-
-Description: {row[1]}
-
-Duration: {row[2]}
-
-Price: {row[3]}
-"""
-
-    return None
-
-
-def save_unanswered_question(
-    session_id,
-    question
-):
-
-    query = """
-    INSERT INTO chat_unanswered_questions
-    (
-        session_id,
-        question
-    )
-    VALUES
-    (
-        :session_id,
-        :question
-    )
-    """
-
-    with engine.connect() as conn:
-
-        conn.execute(
-            text(query),
-            {
-                "session_id": session_id,
-                "question": question
-            }
-        )
-
-        conn.commit()
-
-def get_setting(setting_name):
-
-    query = """
-    SELECT setting_value
-    FROM chat_settings
-    WHERE setting_name = :setting_name
-    """
-
-    with engine.connect() as conn:
-
-        result = conn.execute(
-            text(query),
-            {
-                "setting_name": setting_name
-            }
-        )
-
-        row = result.fetchone()
-
-    if row:
-        return row[0]
-
-    return None
-
-def search_settings_question(message):
-
-    message = message.lower()
-
-    if "email" in message:
-        return get_setting("support_email")
-
-    if "phone" in message or "contact" in message:
-        return get_setting("support_phone")
-
-    return None
-
-def save_callback_request(
-    user_id,
-    course_interest,
-    preferred_time,
-    notes
-):
-
-    query = """
-    INSERT INTO callback_requests
-    (
-        user_id,
-        course_interest,
-        preferred_time,
-        notes
-    )
-    VALUES
-    (
-        :user_id,
-        :course_interest,
-        :preferred_time,
-        :notes
-    )
-    """
-
-    with engine.connect() as conn:
-
-        conn.execute(
-            text(query),
-            {
-                "user_id": user_id,
-                "course_interest": course_interest,
-                "preferred_time": preferred_time,
-                "notes": notes
-            }
-        )
-
-        conn.commit()
-
-def save_chatbot_action(
-    user_id,
-    action_type,
-    reference_id=None,
-    status="success"
-):
-
-    query = """
-    INSERT INTO chatbot_actions
-    (
-        user_id,
-        action_type,
-        reference_id,
-        status
-    )
-    VALUES
-    (
-        :user_id,
-        :action_type,
-        :reference_id,
-        :status
-    )
-    """
-
-    with engine.connect() as conn:
-
-        conn.execute(
-            text(query),
-            {
-                "user_id": user_id,
-                "action_type": action_type,
-                "reference_id": reference_id,
-                "status": status
-            }
-        )
-
-        conn.commit()
-def save_feedback(log_id, rating):
-
-    query = """
-    INSERT INTO chat_feedback
-    (
-        log_id,
-        rating
-    )
-    VALUES
-    (
-        :log_id,
-        :rating
-    )
-    """
-
-    with engine.connect() as conn:
-
-        conn.execute(
-            text(query),
-            {
-                "log_id": log_id,
-                "rating": rating
-            }
-        )
-
-        conn.commit()
+        return settings

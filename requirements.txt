@@ -8,3 +8,6 @@ loguru
 python-multipart
 rapidfuzz
 nltk
+pydantic[email]
+python-multipart
+email-validator
